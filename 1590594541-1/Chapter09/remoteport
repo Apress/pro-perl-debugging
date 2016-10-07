@@ -1,0 +1,106 @@
+#!/usr/bin/perl -w
+
+use strict;
+use Getopt::Long;
+use IO::Socket;
+use Term::ReadLine;
+
+use constant BIGNUM => 65536;
+
+our $previous_input;
+
+# Set host and port. 
+my $host = shift || 'localhost';
+my $port = shift || 12345; # over 1024 please
+die("Usage: $0 hostname portno") unless ($host =~ /\w+/ && $port =~ /^\d+$/);
+print "listening on $host:$port\n";
+
+my $term = new Term::ReadLine 'local prompter';
+my $OUT;
+{ 
+  # strict subs complains about STDOUT, so turn it off for the moment.
+  no strict 'subs';
+  $OUT = $term->OUT || STDOUT;
+}
+$OUT->autoflush(1);
+
+# Open the socket the debugger will connect to.
+my $sock = new IO::Socket::INET(
+                   LocalHost => $host,
+                   LocalPort => $port,
+                   Proto     => 'tcp',
+                   Listen    => SOMAXCONN,
+                   Reuse     => 1);
+$sock or die "no socket :$!";
+
+my $new_sock = $sock->accept();
+
+# Try to pick up the remote hostname for the prompt.
+my $remote_host = gethostbyaddr($sock->sockaddr(), AF_INET) || 'remote';
+my $prompt = "($remote_host)> ";
+
+my ($buf, $input);
+
+# Read output from the debugger, then read debugger input.
+while (1) {
+   # Drop out if the remote debugger went away.
+   exit 0 unless sysread($new_sock, $buf, BIGNUM);
+   print $OUT $buf;
+
+   # Drop out if we got end-of-file locally (warning: this
+   # causes the remote Perl to drop dead because the socket goes away).
+   exit 0 unless defined($input = $term->readline($prompt));
+   print { $new_sock } munge_input($input);
+
+   # Add the line to the terminal history.
+   $term->addhistory($input) if $input =~ /\S/;
+}
+
+# The debugger interaction can get all confused if the string it gets 
+# passed is just a null. We clean this up here.
+sub munge_input {
+  my $actual_input = shift;
+  $actual_input = "\n" unless $actual_input;
+}
+
+__END__
+
+=head1 NAME
+
+remoteport - connect to a remote Perl debugger
+
+=head1 SYNOPSIS
+
+  # default to host: localhost and port: 12345
+  remoteport
+
+  # specify the same:
+  remoteport localhost 12345
+
+  # Use a specific host ip and port:
+  remoteport 192.168.0.7 17284
+
+=head1 DESCRIPTION
+
+C<remoteport> allows you to set up a remote telnet-like session with a Perl
+debugger using the C<RemotePort> option. 
+
+You can specify the host (default localhost) and the port (default 12345) you'd
+like to use, as in the examples above. 
+
+=head1 NOTES
+
+Note that this program doesn't attempt to get the correct ip address for you,
+but its advantage is that it should run on most machines I<out of the box>.
+C<Net::Ifconfig::Wrapper> is probably the correct module to use, if you wanted
+to extend this to handle guessing your ip address correctly, even on Windows
+or a Mac.
+
+Also, remember this is a bit basic and somewhat rough on the edges, so please
+be kind.  Occassionally it may unexpectedly die on you (in which case just
+restart it).  Also sometimes you will need to send it an extra newline to get
+it to register a command properly; for an example try using C<h> and C<h h>.  
+
+Hey, what do you want?  It's a demo program, not a production system!
+
+=cut

@@ -1,0 +1,25 @@
+--- findvars.original	2004-11-07 10:56:17.000000000 +0100
++++ findvars.fixed	2004-11-07 10:35:06.000000000 +0100
+@@ -4,9 +4,11 @@
+ 
+ use FileHandle;
+ 
+-map { eval "require $_;" } @ARGV;
++map { eval "require $_;" 
++	or print STDERR "Warning: unable to require $_: $@" 
++} @ARGV;
+ 
+-my $regex = $ENV{REGEX} || '[\$\@\%\*]&+';
++my $regex = $ENV{REGEX} || '[\$\@\%\*\&]+';
+ 
+ map { $files{$_} = FileHandle->new("< $INC{$_}") } keys %INC;
+ 
+@@ -26,7 +28,7 @@
+ 		my $fh = $files{$f};
+ 		while (<$fh>) {
+ 			++$cnt;
+-		 	$data{$f}{$cnt} = $_ if &wanted;
++		 	$data{$f}{$cnt} = $_ if &wanted($_);
+ 		}
+ 	}
+ }

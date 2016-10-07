@@ -1,0 +1,38 @@
+#!/usr/bin/perl
+
+use strict;
+use NoArg qw(noargs);
+use FileHandle;
+
+print __FILE__." loaded\n"; 
+
+if (noargs(@ARGV)) {
+    print __FILE__." has no arguments\n";
+} else {
+    require Args;
+    my $o_args = Args->new;
+    print __FILE__." arguments: ".$o_args->format('all');
+}
+
+exit;
+
+BEGIN { 
+    print __FILE__." begun\n"; 
+}
+
+__END__
+
+=head1 NAME
+
+usereq - print the command line args
+
+=head1 SYNOPSIS
+
+    usereq arg1 argn
+
+=head1 DESCRIPTION
+
+A short program used as an entry point to load and run Args.pm
+
+=cut
+

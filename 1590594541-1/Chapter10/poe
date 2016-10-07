@@ -1,0 +1,90 @@
+#!/usr/bin/perl
+
+use strict;
+use POE;
+
+my $DEBUG = $ENV{DEBUG} || 0;
+my $file  = $ARGV[0] || '';
+my $count = $ARGV[1] || 10;
+
+die("Usage: $0 filename [divisor]") unless -r $file && $count =~ /^\d+$/;
+
+sub process { print length($_[0]).($DEBUG?"\t->@_<-\n":"\t") };
+
+sub _start {
+    my ($kernel, $heap, $session) = @_[KERNEL, HEAP, SESSION];
+    my $sid = $session->ID;
+    my @lines = @_[ARG0..$#_];
+    $kernel->yield('dosession' => @lines);
+}
+
+sub anewsession {
+    my ($kernel, $heap, $session) = @_[KERNEL, HEAP, SESSION];
+    my $sid = $session->ID;
+    my @lines = @_[ARG0..$#_];
+    print "Session $sid processing ".@lines." lines\n";
+    $DB::single=2 if $sid =~ /[3579]$/;
+    foreach my $line (@lines) {
+        process($line);
+    }
+    print "\n" unless $DEBUG;
+}
+
+my ($tot) = grep(/\S+/, split(/\s+/, `wc $file`));
+my $num = sprintf('%d', $tot / $count);
+print "$file: splitting $tot lines into $count main chunks of $num lines\n";
+
+open(FH, "< $file") or die("$0 unable to open file: $file $!");
+print "$file: opened...\n";
+
+my @lines;
+my $i_cnt;
+
+while (<FH>) {
+    push(@lines, $_);
+    if ((scalar(@lines) == $num) || eof FH) {
+       chomp(@lines);
+        my $session = POE::Session->create(
+            inline_states => {
+                _start     => \&_start,
+                dosession  => \&anewsession,
+            },
+            args    => \@lines,
+        );
+        @lines = ();
+    }
+}
+
+close FH && print "$file: closed => $0($$) done\n";
+
+POE::Kernel->run();
+
+exit 0;
+
+__END__
+
+=head1 NAME
+
+poe - Perl program using POE 
+
+=head1 SYNOPSIS
+
+    %> perl ./poe inputfilename 3
+
+=head1 DESCRIPTION
+
+A program which takes a filename and splits it into the optionally given number
+(or 10) chunks for manipulation via that many POE sessions.
+
+=cut
+
+for (1..$n) {
+    POE::Session->create(
+        inline_states => {
+            _start     => \&_start,
+            dosession  => \&anewsession(@lines),
+            _stop      => \&_stop,
+        }
+    );
+}
+

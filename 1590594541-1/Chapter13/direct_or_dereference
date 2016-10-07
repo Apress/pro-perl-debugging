@@ -1,0 +1,24 @@
+#!/usr/bin/perl
+
+use Benchmark;
+
+my $o_ref = {
+    'two'   => 2,
+    'five'  => 3,
+};
+
+timethese($ARGV[0] || 1000000, {
+    'direct'       => "&direct()",
+    'dereference'  => "&dereference()",
+});
+
+sub direct {
+    my $x = $o_ref->{'two'} + $o_ref->{'five'};
+}
+
+sub dereference {
+    my $one = $o_ref->{'two'};
+    my $two = $o_ref->{'five'};
+    my $x = $one + $two;
+}
+

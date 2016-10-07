@@ -1,0 +1,42 @@
+#!/usr/bin/perl -w
+
+use Objects;
+use strict;
+
+unless (@ARGV) {
+    die("Usage: $0 method [names+]");
+}
+
+my @contents = ('first line', 'second line', 'third line', 'fourth line');
+foreach my $obj (qw(Object Book NonFiction Fiction)) {
+	foreach my $meth (qw(name desc linecount), @ARGV) {
+		my $o_obj = $obj->new("A $obj title", @contents);
+		eval {
+			print sprintf('%-25s', ref($o_obj)."->$meth: ").$o_obj->$meth()."\n";
+		};
+		if ($@) {
+			print $@;
+		}
+	}
+	print "\n";
+}
+
+exit 0;
+
+__END__
+
+=head1 NAME
+
+objects - some object code
+
+=head1 SYNOPSIS
+
+    objects method_name
+
+=head1 DESCRIPTION
+
+Given one or more method names, passes them to each known C<Object>, and calls
+them in turn, printing out the result.
+
+=cut
+

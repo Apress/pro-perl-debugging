@@ -1,0 +1,70 @@
+#!/usr/bin/perl 
+
+%INC = ();
+
+use FileHandle;
+
+map { eval "require $_;" } @ARGV;
+
+my $regex = $ENV{REGEX} || '[\$\@\%\*]&+';
+
+map { $files{$_} = FileHandle->new("< $INC{$_}") } keys %INC;
+
+&getdata(%files);
+&report(%data);
+
+exit 0;
+
+sub wanted {
+	return ($_[0] =~ /$regex/ && $_[0] !~ /^\s*\#/ ? 1 : 0);
+}
+
+sub getdata {
+	my %files = @_;
+	foreach my $f (sort keys %files) {
+		$cnt = 0;
+		my $fh = $files{$f};
+		while (<$fh>) {
+			++$cnt;
+		 	$data{$f}{$cnt} = $_ if &wanted;
+		}
+	}
+}
+
+sub report {
+	my %data = @_;
+	foreach my $k (sort keys %data) {
+		print "\n$k vars:\n";
+		foreach my $r (sort { $a <=> $b } keys %{$data{$k}}) {
+			print "\t[$r]\t$data{$k}{$r}";
+		}
+	}
+}
+
+__END__
+
+=head1 NAME
+
+findvars - display variables in loaded packages
+
+=head1 SYNOPSIS
+
+    findvars [modulenames]+
+
+=head1 DESCRIPTION
+
+Given a list of module names, find and display all variables found.
+
+=head1 REGEX
+
+The regex used to find variables is fairly the clunky: C<[$@%*]> by default.
+If you wish to define another one, set the C<REGEX="xxx"> enviroment variable,
+where C<xxx> is the regular expression to use.
+
+=head1 NOTES
+
+Note that although we ignore directly commented out lines, we slurp up C<pod>
+indiscriminately.
+
+=cut
+

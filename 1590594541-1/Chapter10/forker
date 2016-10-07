@@ -1,0 +1,68 @@
+#!/usr/bin/perl
+
+use strict;
+use POSIX ':sys_wait_h';
+
+my $DEBUG = $ENV{DEBUG} || 0;
+my $file  = $ARGV[0] || '';
+my $count = $ARGV[1] || 10;
+die("Usage: $0 filename [divisor]") unless -r $file && $count =~ /^\d+$/;
+
+$|=1;
+
+$SIG{CHLD} = 'IGNORE';
+sub process { print length($_[0]).($DEBUG?"\t->@_<-\n":"\t") };
+
+my ($tot) = grep(/\S+/, split(/\s+/, `wc $file`));
+my $num = sprintf('%d', $tot / $count);
+print "$file: splitting $tot lines into $count main chunks of $num lines\n";
+
+open(FH, "< $file") or die("$0 unable to open file: $file $!");
+print "$file: opened...\n";
+my @lines;
+my $pid = 1;
+
+while (<FH>) {
+    push(@lines, $_);
+    if ((scalar(@lines) == $num) || eof FH) {
+        chomp(@lines);
+        my $processid;
+        if ($processid = fork) {
+            $pid++;
+            print "[$$] passed ".@lines." lines to number $pid($processid) for processing\n";
+            waitpid($processid, WNOHANG);
+            @lines = ();
+        } else {
+            die "$0 cannot fork: $!" unless defined $processid;
+            sleep 3; # short pause
+            print "Process [$pid] $$ processing ".@lines." lines...\n";
+            foreach my $line (@lines) {
+                process($line);
+            }
+            print "\n" unless $DEBUG;
+            exit 0;
+        }
+    }
+}
+
+close FH && print "$file: closed => $0($$) done\n";
+
+exit 0;
+
+__END__
+
+=head1 NAME
+
+forker - Perl program using fork
+
+=head1 SYNOPSIS
+
+    %> perl ./forker inputfilename 3
+
+=head1 DESCRIPTION
+
+A program which takes a filename and splits it into the optionally given number
+(or 10) chunks for manipulation via that many forked process.
+
+=cut
+

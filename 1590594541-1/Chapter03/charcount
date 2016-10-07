@@ -1,0 +1,68 @@
+#!/usr/bin/perl
+#
+# prints the line number and the number of consonants, vowels and special
+# characters found on each line of the filename given as an argument.
+
+use strict;
+use FileHandle;
+
+my $file = $ARGV[0] || ''; 
+my $verbose = $ARGV[1] || 0;
+
+unless (-f $file) {
+    die("Usage: $0 filename [-v]");
+}
+my $FH = FileHandle->new("< $file") or die("unable to open file($file): $!");
+
+my $i_cnt  = 0;
+my $i_cons = 0;
+my $i_vows = 0;
+my $i_spec = 0;
+
+# parse the file
+while (<$FH>) {
+    my $line = $_; 
+    $i_cons += my $cons = &parse($line, '[bcdfghjklmnpqrstvwxyz]');
+    $i_vows += my $vows = &parse($line, '[aeiou]');
+    $i_spec += my $spec = &parse($line, '[^a-zA-Z0-9\s]'); 
+	$DB::trace = 0;
+    print sprintf('%6d', $i_cnt).':'.
+        '  hard'.('.'x(8-length($cons))).$cons.
+        '  soft'.('.'x(8-length($vows))).$vows.
+        '  spec'.('.'x(8-length($spec))).$spec;
+    print $verbose ? "  $line\n" : "\n";
+    $i_cnt++;
+}
+
+print ' total:'.
+        '  hard'.(' 'x(8-length($i_cons))).$i_cons.
+        '  soft'.(' 'x(8-length($i_vows))).$i_vows.
+        '  spec'.(' 'x(8-length($i_spec))).$i_spec.
+      "\n";
+
+sub parse {
+    my $str = shift;
+    my $reg = shift;
+    my $cnt = my @cnt = ($str =~ /($reg)/g);
+    return $cnt;
+}
+
+exit 0;
+
+__END__
+
+=head1 NAME
+
+charcount - display lineinfo on input files
+
+=head1 SYNOPSIS
+
+    charcount inputfilename
+
+=head1 DESCRIPTION
+
+Prints the line number, followed by the number of consonents, vowels and
+special characters found on each line of the filename given as an argument.
+
+=cut
+

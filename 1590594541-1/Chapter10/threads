@@ -1,0 +1,63 @@
+#!/opt/perlthreads/bin/perl -dt
+
+use strict;
+use threads;
+
+my $DEBUG = $ENV{DEBUG} || 0;
+my $file  = $ARGV[0] || '';
+my $count = $ARGV[1] || 10;
+die("Usage: $0 filename [divisor]") unless -r $file && $count =~ /^\d+$/;
+
+sub process { print length($_[0]).($DEBUG?"\t->@_<-\n":"\t") };
+
+sub anewthread {
+    my @lines = @_;
+    my $tid = threads->self->tid;
+    $DB::single=2 if $tid =~ /[3579]$/;
+    print "Thread [$tid] processing ".@lines." lines\n";
+    foreach my $line (@lines) {
+        process($line);
+    }
+    print "\n" unless $DEBUG;
+}
+
+my ($tot) = grep(/\S+/, split(/\s+/, `wc $file`));
+my $num = sprintf('%d', $tot / $count);
+print "$file: splitting $tot lines into $count main chunks of $num lines\n";
+
+open(FH, "< $file") or die("$0 unable to open file: $file $!");
+print "$file: opened...\n";
+
+my @lines;
+my $i_cnt;
+
+while (<FH>) {
+    push(@lines, $_);
+    if ((scalar(@lines) == $num) || eof FH) {
+       chomp(@lines);
+        my $t = threads->create('anewthread', @lines);
+        @lines = ();
+    }
+}
+
+close FH && print "$file: closed => $0($$) done\n";
+
+exit 0;
+
+__END__
+
+=head1 NAME
+
+threads - Perl program using threads
+
+=head1 SYNOPSIS
+
+    %> perl ./threads inputfilename 3
+
+=head1 DESCRIPTION
+
+A program which takes a filename and splits it into the optionally given number
+(or 10) chunks for manipulation via that many threaded process.
+
+=cut
+

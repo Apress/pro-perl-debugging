@@ -1,0 +1,36 @@
+#!/usr/bin/perl
+
+use strict;
+
+print __FILE__." loaded\n";
+
+my @ARGS = @ARGV;
+
+while (@ARGV) {
+    print __FILE__." running: ".shift(@ARGV)."\n";
+}
+
+print __FILE__." done\n";
+
+\@ARGS;
+
+BEGIN { 
+    print __FILE__." begun\n"; 
+}
+
+__END__
+
+=head1 NAME
+
+getargs - print commandline args
+
+=head1 SYNOPSIS
+
+    getargs one two three
+
+=head1 DESCRIPTION
+
+A module to display the commandline arguments
+
+=cut
+
